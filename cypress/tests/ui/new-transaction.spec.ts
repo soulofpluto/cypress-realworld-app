@@ -12,7 +12,7 @@ describe("New Transaction", function () {
   const ctx: NewTransactionTestCtx = {};
 
   beforeEach(function () {
-    cy.task("db:seed");
+    cy.resetState();
 
     cy.intercept("GET", "/users*").as("allUsers");
 

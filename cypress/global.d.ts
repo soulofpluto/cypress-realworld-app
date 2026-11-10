@@ -48,6 +48,12 @@ declare namespace Cypress {
     getBySelLike(dataTestPrefixAttribute: string, args?: any): Chainable<JQuery<HTMLElement>>;
 
     /**
+     * TCC: reseta o estado do banco conforme o cenário experimental (TEST_SCENARIO).
+     * No cenário "fault" a limpeza é omitida para induzir o test smell Mystery Guest.
+     */
+    resetState(): Chainable<any>;
+
+    /**
      *  Cypress task for directly querying to the database within tests
      */
     task(

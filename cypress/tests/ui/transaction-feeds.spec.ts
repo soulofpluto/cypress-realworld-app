@@ -50,7 +50,7 @@ describe("Transaction Feed", function () {
   };
 
   beforeEach(function () {
-    cy.task("db:seed");
+    cy.resetState();
 
     cy.intercept("GET", "/notifications").as("notifications");
     cy.intercept("GET", "/transactions*").as(feedViews.personal.routeAlias);

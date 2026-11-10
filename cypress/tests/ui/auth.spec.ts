@@ -5,7 +5,7 @@ const apiGraphQL = `${Cypress.expose("apiUrl")}/graphql`;
 
 describe("User Sign-up and Login", function () {
   beforeEach(function () {
-    cy.task("db:seed");
+    cy.resetState();
 
     cy.intercept("POST", "/users").as("signup");
     cy.intercept("POST", apiGraphQL, (req) => {

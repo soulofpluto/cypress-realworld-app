@@ -52,3 +52,6 @@ amplifytools.xcconfig
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# TCC - resultados locais do experimento
+experiment-results/

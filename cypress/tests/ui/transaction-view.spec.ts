@@ -9,7 +9,7 @@ describe("Transaction View", function () {
   const ctx: NewTransactionCtx = {};
 
   beforeEach(function () {
-    cy.task("db:seed");
+    cy.resetState();
 
     cy.intercept("GET", "/transactions*").as("personalTransactions");
     cy.intercept("GET", "/transactions/public*").as("publicTransactions");

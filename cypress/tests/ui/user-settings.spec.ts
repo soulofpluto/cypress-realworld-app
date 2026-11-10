@@ -3,7 +3,7 @@ import { isMobile } from "../../support/utils";
 
 describe("User Settings", function () {
   beforeEach(function () {
-    cy.task("db:seed");
+    cy.resetState();
 
     cy.intercept("PATCH", "/users/*").as("updateUser");
     cy.intercept("GET", "/notifications*").as("getNotifications");

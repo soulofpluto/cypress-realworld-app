@@ -362,6 +362,29 @@ Cypress.Commands.add("database", (operation, entity, query, logTask = false) => 
   });
 });
 
+// TCC – Mitigação de Flaky Tests
+// Ponto único de controle do estado do banco antes de cada teste.
+// O cenário vem de TEST_SCENARIO (ver cypress.config.ts):
+//   - "baseline"   → comportamento original do RWA: reseed completo antes de cada teste.
+//   - "fault"      → injeção de falha (Mystery Guest): NÃO há limpeza entre testes;
+//                    o banco é semeado só uma vez no início da execução (before:run),
+//                    então o estado criado por um teste vaza para os seguintes.
+//   - "refactored" → mantém o reseed; a diferença está nos próprios specs refatorados
+//                    (dados criados no Arrange via API, seletores estáveis, esperas por intercept).
+Cypress.Commands.add("resetState", () => {
+  const scenario = Cypress.expose("scenario") || "baseline";
+
+  if (scenario === "fault") {
+    Cypress.log({
+      name: "resetState",
+      message: "[fault] limpeza do banco omitida (injeção de Mystery Guest)",
+    });
+    return;
+  }
+
+  cy.task("db:seed");
+});
+
 Cypress.Commands.add("loginByGoogleApi", () => {
   cy.log("Logging in to Google");
 

@@ -1,0 +1,115 @@
+# TCC – Mitigação de Flaky Tests em Automação E2E
+# Executa a suíte de UI do RWA repetidas vezes para cada combinação de
+# cenário (baseline / fault / refactored) × restrição de hardware (container),
+# e agrega as métricas: Flaky Test Rate, Determinismo e Duração da build.
+#
+# Disparo manual: aba Actions → "Experimento Flaky Tests (TCC)" → Run workflow.
+name: Experimento Flaky Tests (TCC)
+
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: "Repetições por combinação (cenário × hardware)"
+        default: "10"
+        required: true
+      scenarios:
+        description: 'Cenários (JSON). Ex.: ["baseline","fault","refactored"]'
+        default: '["baseline","fault"]'
+        required: true
+      hardware:
+        description: "Perfis de hardware do container (JSON com label e options do docker)"
+        default: '[{"label":"restrito-1cpu-3gb","options":"--cpus 1 --memory 3g"},{"label":"sem-limite","options":""}]'
+        required: true
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      runs: ${{ steps.runs.outputs.runs }}
+    steps:
+      - id: runs
+        run: node -e "const n=Number(process.env.N); console.log('runs='+JSON.stringify(Array.from({length:n},(_,i)=>i+1)))" >> "$GITHUB_OUTPUT"
+        env:
+          N: ${{ inputs.runs }}
+
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: cypress/browsers:22.20.0
+      options: --user 1001
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar dependências
+        uses: cypress-io/github-action@v6
+        with:
+          runTests: false
+      - run: yarn build:ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build
+          if-no-files-found: error
+          path: build
+
+  experiment:
+    needs: [setup, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        scenario: ${{ fromJSON(inputs.scenarios) }}
+        hw: ${{ fromJSON(inputs.hardware) }}
+        run: ${{ fromJSON(needs.setup.outputs.runs) }}
+    name: ${{ matrix.scenario }} | ${{ matrix.hw.label }} | #${{ matrix.run }}
+    container:
+      image: cypress/browsers:22.20.0
+      options: --user 1001 ${{ matrix.hw.options }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: build
+          path: build
+      - name: Executar suíte (${{ matrix.scenario }})
+        uses: cypress-io/github-action@v6
+        with:
+          start: yarn start:ci
+          wait-on: "http://localhost:3000"
+          wait-on-timeout: 120
+          command: >-
+            node scripts/experiment/run-experiment.js
+            --scenario ${{ matrix.scenario }}
+            --label ${{ matrix.hw.label }}
+            --run-id ${{ matrix.run }}
+            --browser chrome
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: result-${{ matrix.scenario }}-${{ matrix.hw.label }}-${{ matrix.run }}
+          path: experiment-results/
+          if-no-files-found: warn
+
+  analyze:
+    needs: experiment
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: result-*
+          path: experiment-results
+          merge-multiple: true
+      - name: Calcular métricas
+        run: |
+          node scripts/experiment/analyze-results.js experiment-results
+          cat experiment-results/report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: analise-final
+          path: experiment-results/

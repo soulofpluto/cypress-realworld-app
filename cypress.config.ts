@@ -20,13 +20,16 @@ try {
 
 export default defineConfig({
   projectId: "7s5okt",
+  // TCC: no experimento usamos TEST_RETRIES=0 para que retries não mascarem a instabilidade.
   retries: {
-    runMode: 2,
+    runMode: process.env.TEST_RETRIES !== undefined ? Number(process.env.TEST_RETRIES) : 2,
   },
   env: {
     defaultPassword: process.env.SEED_DEFAULT_USER_PASSWORD,
   },
   expose: {
+    // TCC: cenário experimental — "baseline" | "fault" | "refactored"
+    scenario: process.env.TEST_SCENARIO || "baseline",
     apiUrl: "http://localhost:3001",
     mobileViewportWidthBreakpoint: 414,
     coverage: false,
@@ -84,6 +87,14 @@ export default defineConfig({
 
         return Array.isArray(query) ? Promise.map(query, fetchData) : fetchData(query);
       };
+
+      // TCC: no cenário "fault" não há limpeza entre testes, mas a execução
+      // começa de um estado conhecido (um único seed antes de todos os specs).
+      on("before:run", async () => {
+        if (config.expose.scenario === "fault") {
+          await axios.post(`${testDataApiEndpoint}/seed`);
+        }
+      });
 
       on("task", {
         async "db:seed"() {

@@ -11,7 +11,7 @@ describe("Notifications", function () {
   const ctx = {} as NotificationsCtx;
 
   beforeEach(function () {
-    cy.task("db:seed");
+    cy.resetState();
 
     cy.intercept("GET", "/notifications*").as("getNotifications");
     cy.intercept("POST", "/transactions").as("createTransaction");

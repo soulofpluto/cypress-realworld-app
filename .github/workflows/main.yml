@@ -1,9 +1,9 @@
 name: Cypress Tests
 
+# TCC: no fork, este workflow depende de secrets do Cypress Cloud (CYPRESS_RECORD_KEY)
+# que não existem aqui; por isso roda só manualmente. O experimento está em flaky-experiment.yml.
 on:
-  push:
-    branches-ignore:
-      - "renovate/**"
+  workflow_dispatch:
 
 jobs:
   install:
